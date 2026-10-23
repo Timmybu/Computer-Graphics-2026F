@@ -16,6 +16,10 @@ typedef struct {
     vec4 w;
 } mat4;
 
+typedef struct {
+    float x;
+    float y;
+} vec2;
 
 // Insert function signatures after this line
 
