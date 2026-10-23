@@ -29,16 +29,32 @@ int is_animating = 0;     // Whether the program is currently animating
 
 
 void init(void) {
-    num_vertices = 6;
+    num_vertices = 6*4;
+    int v_idx = 0;
+    int t_idx = 0;
 
-    int size_of_positions = sizeof(vec4) * num_vertices;
-    vec4 *positions = (vec4 *) malloc(size_of_positions);    
-    positions[0] = (vec4) { 0.5, -0.5, 0.0, 1.0};
-    positions[1] = (vec4) {-0.5, 0.5, 0.0, 1.0};
-    positions[2] = (vec4) {-0.5, -0.5, 0.0, 1.0};
-    positions[3] = (vec4) { 0.5, -0.5, 0.0, 1.0};
-    positions[4] = (vec4) { 0.5, 0.5, 0.0, 1.0};
-    positions[5] = (vec4) {-0.5, 0.5, 0.0, 1.0};  
+
+    size_t size_of_positions = sizeof(vec4) * num_vertices;
+    vec4 *positions = (vec4 *) malloc(size_of_positions);
+    for(int i = 0; i < 2; i++) {
+        positions[v_idx++] = (vec4) { 0.0 + 1.0 * i, 0.0, 0.0, 1.0};
+        positions[v_idx++] = (vec4) { -1.0 + 1.0 * i, 1.0, 0.0, 1.0};
+        positions[v_idx++] = (vec4) { -1.0 + 1.0 * i, 0.0, 0.0, 1.0};
+        positions[v_idx++] = (vec4) { 0.0 + 1.0 * i, 0.0, 0.0, 1.0};
+        positions[v_idx++] = (vec4) { 0.0 + 1.0 * i, 1.0, 0.0, 1.0};
+        positions[v_idx++] = (vec4) { -1.0 + 1.0 * i, 1.0, 0.0, 1.0}; 
+    }   
+    
+    for(int i = 0; i < 2; i++) {
+        positions[v_idx++] = (vec4) { 0.0 + 1.0 * i, -1.0, 0.0, 1.0};
+        positions[v_idx++] = (vec4) { -1.0 + 1.0 * i, 0.0, 0.0, 1.0};
+        positions[v_idx++] = (vec4) { -1.0 + 1.0 * i, -1.0, 0.0, 1.0};
+        positions[v_idx++] = (vec4) { 0.0 + 1.0 * i, -1.0, 0.0, 1.0};
+        positions[v_idx++] = (vec4) { 0.0 + 1.0 * i, 0.0, 0.0, 1.0};
+        positions[v_idx++] = (vec4) { -1.0 + 1.0 * i, 0.0, 0.0, 1.0}; 
+    }
+
+     
     
     // vec4 *colors = (vec4*) malloc(sizeof(vec4) * num_vertices);
     // colors[0] = (vec4) {1.0, 0.0, 0.0, 1.0};	// red   (for top)
@@ -48,21 +64,26 @@ void init(void) {
     // colors[4] = (vec4) {0.0, 1.0, 0.0, 1.0};	// green (for bottom right)
     // colors[5] = (vec4) {0.0, 1.0, 0.0, 1.0};	// green (for bottom right)
 
-    int size_of_tex_coords = sizeof(vec2) * num_vertices;
+    size_t size_of_tex_coords = sizeof(vec2) * num_vertices;
     vec2 *tex_coords = (vec2 *) malloc(size_of_tex_coords);
-    tex_coords[0] = (vec2) {0.25, 0.25};
-    tex_coords[1] = (vec2) {0.0, 0.0};
-    tex_coords[2] = (vec2) {0.0, 0.25};
-    tex_coords[3] = (vec2) {0.25, 0.25};
-    tex_coords[4] = (vec2) {0.25, 0.00};
-    tex_coords[5] = (vec2) {0.0, 0.0};
+    for(int i = 0; i < 4; i++) {
+        tex_coords[t_idx++] = (vec2) {0.25 + 0.25 * i, 0.25};
+        tex_coords[t_idx++] = (vec2) {0.0+ 0.25 * i, 0.0};
+        tex_coords[t_idx++] = (vec2) {0.0+ 0.25 * i, 0.25};
+        tex_coords[t_idx++] = (vec2) {0.25+ 0.25 * i, 0.25};
+        tex_coords[t_idx++] = (vec2) {0.25+ 0.25 * i, 0.00};
+        tex_coords[t_idx++] = (vec2) {0.0+ 0.25 * i, 0.0};
 
+    }
+    
     int tex_w = 64;
     int tex_h = 64;
 
     GLubyte my_texels[tex_w][tex_h][3];
 
-    FILE *fp = fopen("texture01.raw", "r");
+    FILE *fp = fopen("textures01.raw", "r");
+    if(fp == NULL) 
+        printf("[WARNING] Cannot open texture file\n");
     fread(my_texels, tex_w * tex_h * 3, 1, fp);
     fclose(fp);
 
@@ -129,7 +150,7 @@ void init(void) {
 			  GL_FLOAT,                  // The type of each component
 			  GL_FALSE,                  // Whether to normalize
 			  0,                         // Number of byte offset between data
-			  (GLvoid *) (uintptr_t) (size_of_positions)); // The offset of the first data
+			  (GLvoid *) (size_of_positions)); // The offset of the first data
 
     GLuint texture_location = glGetUniformLocation(program, "texture");
     glUniform1i(texture_location, 0);
