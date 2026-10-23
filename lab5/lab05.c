@@ -16,6 +16,7 @@
 
 
 
+
 int num_vertices;    // The number of vertices
 int first_index;     // The first index to draw
 
@@ -29,23 +30,54 @@ int is_animating = 0;     // Whether the program is currently animating
 
 void init(void) {
     num_vertices = 6;
-    vec4 *positions = (vec4*) malloc(sizeof(vec4) * num_vertices);
-    vec4 *colors = (vec4*) malloc(sizeof(vec4) * num_vertices);
 
-    positions[0] = (vec4) { 0.0,  0.5,  0.0, 1.0};      // top
-    positions[1] = (vec4) {-0.5, -0.5,  0.0, 1.0},	// bottom left
-    positions[2] = (vec4) { 0.5, -0.5,  0.0, 1.0},	// bottom right
-    positions[3] = (vec4) { 0.5,  0.8, -0.5, 1.0},	// top
-    positions[4] = (vec4) { 0.9,  0.0, -0.5, 1.0},	// bottom right
-    positions[5] = (vec4) { 0.1,  0.0, -0.5, 1.0};	// bottom left   
+    int size_of_positions = sizeof(vec4) * num_vertices;
+    vec4 *positions = (vec4 *) malloc(size_of_positions);    
+    positions[0] = (vec4) { 0.5, -0.5, 0.0, 1.0};
+    positions[1] = (vec4) {-0.5, 0.5, 0.0, 1.0};
+    positions[2] = (vec4) {-0.5, -0.5, 0.0, 1.0};
+    positions[3] = (vec4) { 0.5, -0.5, 0.0, 1.0};
+    positions[4] = (vec4) { 0.5, 0.5, 0.0, 1.0};
+    positions[5] = (vec4) {-0.5, 0.5, 0.0, 1.0};  
+    
+    // vec4 *colors = (vec4*) malloc(sizeof(vec4) * num_vertices);
+    // colors[0] = (vec4) {1.0, 0.0, 0.0, 1.0};	// red   (for top)
+    // colors[1] = (vec4) {0.0, 1.0, 0.0, 1.0};	// green (for bottom left)
+    // colors[2] = (vec4) {0.0, 0.0, 1.0, 1.0};	// blue  (for bottom right)
+    // colors[3] = (vec4) {0.0, 1.0, 0.0, 1.0};	// green (for bottom right)
+    // colors[4] = (vec4) {0.0, 1.0, 0.0, 1.0};	// green (for bottom right)
+    // colors[5] = (vec4) {0.0, 1.0, 0.0, 1.0};	// green (for bottom right)
 
-    colors[0] = (vec4) {1.0, 0.0, 0.0, 1.0};	// red   (for top)
-    colors[1] = (vec4) {0.0, 1.0, 0.0, 1.0};	// green (for bottom left)
-    colors[2] = (vec4) {0.0, 0.0, 1.0, 1.0};	// blue  (for bottom right)
-    colors[3] = (vec4) {0.0, 1.0, 0.0, 1.0};	// green (for bottom right)
-    colors[4] = (vec4) {0.0, 1.0, 0.0, 1.0};	// green (for bottom right)
-    colors[5] = (vec4) {0.0, 1.0, 0.0, 1.0};	// green (for bottom right)
+    int size_of_tex_coords = sizeof(vec2) * num_vertices;
+    vec2 *tex_coords = (vec2 *) malloc(size_of_tex_coords);
+    tex_coords[0] = (vec2) {0.25, 0.25};
+    tex_coords[1] = (vec2) {0.0, 0.0};
+    tex_coords[2] = (vec2) {0.0, 0.25};
+    tex_coords[3] = (vec2) {0.25, 0.25};
+    tex_coords[4] = (vec2) {0.25, 0.00};
+    tex_coords[5] = (vec2) {0.0, 0.0};
 
+    int tex_w = 64;
+    int tex_h = 64;
+
+    GLubyte my_texels[tex_w][tex_h][3];
+
+    FILE *fp = fopen("texture01.raw", "r");
+    fread(my_texels, tex_w * tex_h * 3, 1, fp);
+    fclose(fp);
+
+    GLuint mytex[1];
+    glGenTextures(1, mytex);
+    glBindTexture(GL_TEXTURE_2D, mytex[0]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex_w, tex_h, 0, GL_RGB,
+    GL_UNSIGNED_BYTE, my_texels);
+    glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
+    glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
+    glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+    glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+    int param;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &param);
+    
     GLuint program = initShader("vshader.glsl", "fshader.glsl");
     glUseProgram(program);
 
@@ -62,24 +94,24 @@ void init(void) {
     glGenBuffers(1, &buffer);
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
     glBufferData(GL_ARRAY_BUFFER,
-		 sizeof(vec4) * num_vertices * 2,    // The number of bytes to allocate
+		 size_of_positions + size_of_tex_coords,    // The number of bytes to allocate
 		 NULL,
 		 GL_STATIC_DRAW);
     glBufferSubData(GL_ARRAY_BUFFER,
 		    0,                               // The starting offset of the allocated memory
-		    sizeof(vec4) * num_vertices,     // The number of bytes to transfer
+		    size_of_positions,               // The number of bytes to transfer
 		    positions);                      // The array of data to transfer
     glBufferSubData(GL_ARRAY_BUFFER,
-		    sizeof(vec4) * num_vertices,     // The starting offset of the allocated memory
-		    sizeof(vec4) * num_vertices,     // The number of bytes to transfer
-		    colors);                         // The array of data to transfer
+		    size_of_positions,               // The starting offset of the allocated memory
+		    size_of_tex_coords,              // The number of bytes to transfer
+            tex_coords);                     // The array of data to transfer
 
     free(positions);                                 // positions is no longer needed
-    free(colors);                                    // colors is no longer needed
+    free(tex_coords);                                    // colors is no longer needed
     
     GLuint vPosition = glGetAttribLocation(program, "vPosition");
     if(vPosition == -1)
-	printf("[WARNING] Cannot allocate the attribute 'vPosition' or it is not used in a glsl.\n");
+	    printf("[WARNING] Cannot allocate the attribute 'vPosition' or it is not used in a glsl.\n");
     glEnableVertexAttribArray(vPosition);
     glVertexAttribPointer(vPosition,                 // The index
 			  4,                         // The number of components in each data
@@ -88,20 +120,23 @@ void init(void) {
 			  0,                         // Number of byte offset between data
 			  (GLvoid *) 0);             // The offset of the first data
 
-    GLuint vColor = glGetAttribLocation(program, "vColor");
-    if(vColor == -1)
-	printf("[WARNING] Cannot allocate the attribute 'vColor' or it is not used in a glsl.\n");
-    glEnableVertexAttribArray(vColor);
-    glVertexAttribPointer(vColor,                    // The index
-			  4,                         // The number of components in each data
+    GLuint vTexCoord = glGetAttribLocation(program, "vTexCoord");
+    if(vTexCoord == -1)
+	    printf("[WARNING] Cannot allocate the attribute 'vTexCoord' or it is not used in a glsl.\n");
+    glEnableVertexAttribArray(vTexCoord);
+    glVertexAttribPointer(vTexCoord,                    // The index
+			  2,                         // The number of components in each data
 			  GL_FLOAT,                  // The type of each component
 			  GL_FALSE,                  // Whether to normalize
 			  0,                         // Number of byte offset between data
-			  (GLvoid *) (sizeof(vec4) * num_vertices)); // The offset of the first data
+			  (GLvoid *) (uintptr_t) (size_of_positions)); // The offset of the first data
+
+    GLuint texture_location = glGetUniformLocation(program, "texture");
+    glUniform1i(texture_location, 0);
 
     ctm_location = glGetUniformLocation(program, "ctm");
     if(ctm_location == -1)                           // Check ctm_location
-	printf("[WARNING] Cannot allocate the uniform variable 'ctm' or it is not used in a glsl.\n");
+	    printf("[WARNING] Cannot allocate the uniform variable 'ctm' or it is not used in a glsl.\n");
     
     glEnable(GL_DEPTH_TEST);                         // Enable hidden surface removal
     glClearColor(0.0, 0.0, 0.0, 1.0);                // The color to be used for glClear()
