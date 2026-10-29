@@ -23,8 +23,8 @@ void main()
     // normalize(vec4(0,0,0,1) - model_view * ctm * vPosition);
 
     color = max(dot(L, N), 0.0) * vec4(0.8, 0.8, 0.8, 1.0);
+    // color = vec4(0.8,0.8,0.8,1)
     // color = vColor * max(dot(L,N), 0);
 
     gl_Position = ctm * vPosition;
-    // gl_Position = projection * model view * ctm * vPosition;
 }
