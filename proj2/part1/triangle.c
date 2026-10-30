@@ -21,16 +21,32 @@
 
 int num_vertices;    // The number of vertices
 int first_index;     // The first index to draw
-int sphere_index;   // sphere's last index
-int torus_index;
-int spring_index;
 int stl_index;
+float l = -1; 
+float r = 1;
+float b = -1;
+float t = 1;
+float n = -1;
+float f = -1000;
 char* stl_file = NULL;
 
 GLuint ctm_location; // The index of the uniform variable named ctm
 // ALWAYS initialize a transformation matrix to the identity matrix
 mat4 ctm = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
 mat4 idty = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+vec4 vrp = {220, 5, -300, 1};
+vec4 vpn = {0, 0, -1, 1};
+vec4 vup = {0, 1, 0, 0};
+mat4 proj = {
+    {1, 0, 0, 0},
+    {0, 1, 0, 0},
+    {0, 0, 1, 0},
+    {0, 0, 0, 1}
+};
+
+mat4 model_view;
+GLuint model_view_location;
+GLuint projection_location;
 
 GLfloat degree = 0.0;     // The current degree
 int is_animating = 0;     // Whether the program is currently animating
@@ -160,7 +176,9 @@ void init(void) {
 
               
 
-    ctm_location = glGetUniformLocation(program, "ctm");
+    model_view_location = glGetUniformLocation(program, "model_view");
+    projection_location = glGetUniformLocation(program, "projection");
+
     if(ctm_location == -1)                           // Check ctm_location
 	printf("[WARNING] Cannot allocate the uniform variable 'ctm' or it is not used in a glsl.\n");
     
@@ -176,11 +194,27 @@ void display(void) {
     glClear(GL_COLOR_BUFFER_BIT |                    // Clear the color buffer
 	    GL_DEPTH_BUFFER_BIT);                    // Clear the depth buffer
 
-    glUniformMatrix4fv(ctm_location,                 // The index of the uniform variable
+    // mat4 model_view = ctm;
+    mat4 model_view = mat_mul(mat_translate(-vrp.x, -vrp.y, -vrp.z), mat_mul(ctm, mat_rot_x(-90)));    
+    mat4 proj = fustrum(l, r, b, t, n, f);
+    // mat4 proj = idty;
+
+    // mat4 view = mat_translate(-vrp.x, -vrp.y, -vrp.z);
+    // mat4 final_ctm = mat_mul(proj, mat_mul(view, ctm));
+
+
+
+    glUniformMatrix4fv(model_view_location,                 // The index of the uniform variable
 		       1,                            // The number of components to be sent (1 matrix)
 		       GL_FALSE,                     // Do not transpose
-		       (GLfloat *) &ctm);             // The data to be sent
+		       (GLfloat *) &model_view);             // The data to be sent
     
+    glUniformMatrix4fv(projection_location,                 // The index of the uniform variable
+		       1,                            // The number of components to be sent (1 matrix)
+		       GL_FALSE,                     // Do not transpose
+		       (GLfloat *) &proj);             // The data to be sent
+    
+
     glDrawArrays(GL_TRIANGLES,                       // Type of primitive mode to draw
 		 first_index,                        // The first index
 		 num_vertices);                      // The number of vertices to draw
@@ -195,18 +229,61 @@ void keyboard(unsigned char key, int mousex, int mousey) {
 #else
     	glutLeaveMainLoop();    // Terminate the main loop (to exit the program)
 #endif
+    }        
+    else if(key == 'w') { l = l + 0.1; }
+    else if(key == 's') {
+        l = l - 0.1;
     }
-    else if(key == 'a') {
-        float s = 1.02;
-        mat4 r = mat_rot_y(4);
-        ctm = mat_mul(ctm, r);
+    else if(key == 'e') {
+        r = r + 0.1;
     }
-    else if(key == 'w') {
-        float s = 1.02;
-        mat4 r = mat_rot_z(4);
-        ctm = mat_mul(ctm, r);
+    else if(key == 'd') {
+        r = r - 0.1;
+    }
+    else if(key == 'r') {
+        b = b + 0.1;
+    }
+    else if(key == 'f') {
+        b = b - 0.1;
+    }
+    else if(key == 't') {
+        t = t + 0.1;
+    }
+    else if(key == 'g') {
+        t = t - 0.1;
+    }
+    else if(key == 'y') {
+        n = n + 0.1;
+    }
+    else if(key == 'h') {
+        n = n - 0.1;
+    }
+    else if(key == 'u') {
+        f = f + 50;
+    }
+    else if(key == 'j') {
+        f = f - 50;
+    }
+    else if(key == 'p') {
+        printf("L:%f|R:%f|B:%f|T:%f|N:%f|F:%f", l,r,b,t,n,f);
     }
     glutPostRedisplay();        // Redraw the whole scene
+}
+
+void special(int key, int x, int y) {
+    if(key == GLUT_KEY_LEFT) {
+        // left arrow
+    }
+    else if(key == GLUT_KEY_RIGHT) {
+        // right arrow
+    }
+    else if(key == GLUT_KEY_UP) {
+        vrp.x = vrp.x + 1.0;
+    }
+    else if(key == GLUT_KEY_DOWN) {
+        // down arrow
+    }
+    glutPostRedisplay();
 }
 
 vec4 prev = {0,0,0,0};
@@ -310,6 +387,7 @@ int main(int argc, char **argv) {
     init();                                 // Call the init function (user-defined above)
     glutDisplayFunc(display);               // The function to call when redrawing is required
     glutKeyboardFunc(keyboard);             // The function to call when a key is pressed
+    glutSpecialFunc(special);
     glutMouseFunc(mouse);
 
     glutMotionFunc(motion);

@@ -320,3 +320,14 @@ mat4 mat_rot_y(float th) {
 
     return t;
 }
+
+mat4 fustrum(float left, float right, float bottom, float top, float near, float far) {
+    mat4 m = {
+        {(-2 * near) / (right - left), 0, 0, 0},
+        {0, (-2 * near) / (top - bottom), 0, 0},
+        {(left + right) / (right - left), (bottom + top) / (top-bottom), (near + far) / (far - near), -1},
+        {0, 0, (-2 * near * far) / (far - near), 0}
+    };
+
+    return m;
+}

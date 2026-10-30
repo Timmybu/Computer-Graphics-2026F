@@ -60,6 +60,9 @@ mat4 mat_rot_z(float th);
 mat4 mat_rot_x(float th);
 
 mat4 mat_rot_y(float th);
+
+mat4 fustrum(float left, float right, float bottom, float top, float near, float far);
+
 // Do not put anything after this line
 
 #endif
