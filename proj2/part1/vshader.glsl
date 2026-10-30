@@ -8,11 +8,10 @@ varying vec4 color;
 
 uniform mat4 model_view;
 uniform mat4 projection;
-uniform mat4 model;
 
 // uniform mat4 ctm;
 
-vec4 light_position = vec4(-220, 200, 300, 1);
+vec4 light_position = vec4(0, 2, 1, 1);
 
 void main()
 {
@@ -23,7 +22,7 @@ void main()
     
 
     vec4 L = normalize(light_position);
-    vec4 N = normalize(model * vNormal);
+    vec4 N = normalize(model_view * vNormal);
     // normalize(vec4(0,0,0,1) - model_view * ctm * vPosition);
 
     color = max(dot(L, N), 0.0) * vec4(0.8, 0.8, 0.8, 1.0);

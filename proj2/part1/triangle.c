@@ -21,70 +21,70 @@
 
 int num_vertices;    // The number of vertices
 int first_index;     // The first index to draw
+int sphere_index;   // sphere's last index
+int torus_index;
+int spring_index;
 int stl_index;
-float left = -1; 
-float right = 1;
-float bottom = -1;
-float top = 1;
-float near = -1;
-float far = -1000;
 char* stl_file = NULL;
 
 GLuint ctm_location; // The index of the uniform variable named ctm
+GLuint model_view_location;
+GLuint projection_location;
 // ALWAYS initialize a transformation matrix to the identity matrix
 mat4 ctm = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
 mat4 idty = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
-vec4 vrp = {220, 5, -300, 1};
-vec4 vpn = {0, 0, -1, 1};
-vec4 vup = {0, 1, 0, 0};
-mat4 proj = {
-    {1, 0, 0, 0},
-    {0, 1, 0, 0},
-    {0, 0, 1, 0},
-    {0, 0, 0, 1}
-};
-
-mat4 model_view;
-GLuint model_view_location;
-GLuint model_location;
-GLuint projection_location;
 
 GLfloat degree = 0.0;     // The current degree
 int is_animating = 0;     // Whether the program is currently animating
 
-int FLYING_UP = 0;
-int FLYING_DOWN = 0;
-int WALK_FORWARD = 0;
-int WALK_BACKWARD = 0;
-int WALK_LEFT = 0;
-int WALK_RIGHT = 0;
-int TURN_LEFT = 0;
-int TURN_RIGHT = 0;
-
-
 void init(void) {
-    num_vertices = 1500000;
+    num_vertices = 1999990;
     float max, s;  
     vec4* colors = (vec4*) malloc(sizeof(vec4) * num_vertices);
     vec4* positions = (vec4*) malloc(sizeof(vec4) * num_vertices); 
-    vec4* normals = (vec4*) malloc(sizeof(vec4) * num_vertices); 
+    vec4* normals = (vec4*) malloc(sizeof(vec4) * num_vertices);
     srand((unsigned)time(NULL));   /* seed once */
     
     int idx = 0;
-    
+
+
 
     if(stl_file != NULL) {
         int stl_count;
         vec4 *stl = stl_read(stl_file, &stl_count, &max);
 
+         // find the bounding box
+            vec4 lo = stl[0], hi = stl[0];
+            for(int i = 1; i < stl_count; i++) {
+                if(stl[i].x < lo.x) lo.x = stl[i].x;
+                if(stl[i].y < lo.y) lo.y = stl[i].y;
+                if(stl[i].z < lo.z) lo.z = stl[i].z;
+                if(stl[i].x > hi.x) hi.x = stl[i].x;
+                if(stl[i].y > hi.y) hi.y = stl[i].y;
+                if(stl[i].z > hi.z) hi.z = stl[i].z;
+            }
+
+            // center of the box
+            float cx = (lo.x + hi.x) / 2;
+            float cy = (lo.y + hi.y) / 2;
+            float cz = (lo.z + hi.z) / 2;
+
+            // half of the longest side
+            float half = (hi.x - lo.x) / 2;
+            if((hi.y - lo.y) / 2 > half) half = (hi.y - lo.y) / 2;
+            if((hi.z - lo.z) / 2 > half) half = (hi.z - lo.z) / 2;
+
+        s = 1.0f / half;
+        mat4 fit = mat_mul(mat_scale(s,s,s), mat_translate(-cx,-cy,-cz));
+
         for (int i = 0; i < stl_count /3; i++) {
-            vec4 a = stl[i * 3];
-            vec4 b = stl[i * 3 + 1];
-            vec4 c = stl[i * 3 + 2];
-            
-            vec4 u = v4_sub(a,b);
-            vec4 v = v4_sub(a,c);
-            vec4 n = v4_cross(u,v);
+            vec4 a = mat_v4_mul(fit, stl[i * 3]);
+            vec4 b = mat_v4_mul(fit, stl[i * 3 + 1]);
+            vec4 c = mat_v4_mul(fit, stl[i * 3 + 2]);
+
+            vec4 u = v4_sub(a, b);
+            vec4 v = v4_sub(a, c);
+            vec4 n = v4_cross(u, v);
 
             positions[idx] = a;
             normals[idx] = n; 
@@ -104,15 +104,15 @@ void init(void) {
     num_vertices = idx;
 
 
-    // // COLORS
-    // for(int i = 0; i < (num_vertices / 3); i++) {
-    //     float r = (float)rand()/(float)(RAND_MAX);
-    //     float g = (float)rand()/(float)(RAND_MAX);
-    //     float b = (float)rand()/(float)(RAND_MAX);
-    //     colors[3 * i + 0] = (vec4) {r, b, g, 1.0};
-    //     colors[3 * i + 1] = (vec4) {r, b, g, 1.0};
-    //     colors[3 * i + 2] = (vec4) {r, b, g, 1.0};
-    // }
+    // COLORS
+    for(int i = 0; i < (num_vertices / 3); i++) {
+        float r = (float)rand()/(float)(RAND_MAX);
+        float g = (float)rand()/(float)(RAND_MAX);
+        float b = (float)rand()/(float)(RAND_MAX);
+        colors[3 * i + 0] = (vec4) {r, b, g, 1.0};
+        colors[3 * i + 1] = (vec4) {r, b, g, 1.0};
+        colors[3 * i + 2] = (vec4) {r, b, g, 1.0};
+    }
 
 
 
@@ -143,23 +143,19 @@ void init(void) {
 		    sizeof(vec4) * num_vertices,     // The starting offset of the allocated memory
 		    sizeof(vec4) * num_vertices,     // The number of bytes to transfer
 		    colors);                         // The array of data to transfer
-    glBufferSubData(GL_ARRAY_BUFFER,
-		    sizeof(vec4) * num_vertices * 2,     // The starting offset of the allocated memory
-		    sizeof(vec4) * num_vertices,     // The number of bytes to transfer
-		    normals);                         // The array of data to transfer
 
-    free(positions);                                 // positions is no longer needed
-    // free(colors);                                    // colors is no longer needed
+    glBufferSubData(GL_ARRAY_BUFFER,
+                sizeof(vec4) * num_vertices * 2,
+                sizeof(vec4) * num_vertices,
+                normals);
+
     free(normals);
+    free(positions);                                 // positions is no longer needed
+    free(colors);                                    // colors is no longer needed
     
     GLuint vPosition = glGetAttribLocation(program, "vPosition");
     if(vPosition == -1)
 	printf("[WARNING] Cannot allocate the attribute 'vPosition' or it is not used in a glsl.\n");
-
-    model_location = glGetUniformLocation(program, "model");
-    if(model_location == -1) 
-    printf("[WARNING] model bug\n");
-    
     glEnableVertexAttribArray(vPosition);
     glVertexAttribPointer(vPosition,                 // The index
 			  4,                         // The number of components in each data
@@ -167,7 +163,6 @@ void init(void) {
 			  GL_FALSE,                  // Whether to normalize
 			  0,                         // Number of byte offset between data
 			  (GLvoid *) 0);             // The offset of the first data
-
 
     GLuint vNormal = glGetAttribLocation(program, "vNormal");
     if(vNormal == -1)
@@ -180,14 +175,15 @@ void init(void) {
 			  0,                         // Number of byte offset between data
 			  (GLvoid *) (sizeof(vec4) * num_vertices * 2)); // The offset of the first data
 
-              
+
+    
 
     model_view_location = glGetUniformLocation(program, "model_view");
+    if(model_view_location == -1) 
+        printf("[WARNING] model_view not found\n");
     projection_location = glGetUniformLocation(program, "projection");
-    model_location = glGetUniformLocation(program, "model");
-
-    if(ctm_location == -1)                           // Check ctm_location
-	printf("[WARNING] Cannot allocate the uniform variable 'ctm' or it is not used in a glsl.\n");
+    if(projection_location == -1) 
+        printf("[WARNING] projection not found\n");
     
     glEnable(GL_DEPTH_TEST);                         // Enable hidden surface removal
     glClearColor(0.0, 0.0, 0.0, 1.0);                // The color to be used for glClear()
@@ -201,48 +197,18 @@ void display(void) {
     glClear(GL_COLOR_BUFFER_BIT |                    // Clear the color buffer
 	    GL_DEPTH_BUFFER_BIT);                    // Clear the depth buffer
 
-
-    // n - opposite of viewing direction, normalized
-    vec4 n = v4_norm((vec4){-vpn.x, -vpn.y, -vpn.z, -vpn.w});
-    // u - cross product of VUP and n
-    vec4 u = v4_cross(vup, n);
-    // v - n x u
-    vec4 v = v4_cross(n, u);
-
-    mat4 rot = {
-        {u.x, v.x, n.x, 0.0},
-        {u.y, v.y, n.y, 0.0},
-        {u.z, v.z, n.z, 0.0},
-        {0.0, 0.0, 0.0, 1.0}
-    };
-
-
-    mat4 model_view = mat_mul(rot, mat_mul(mat_translate(-vrp.x, -vrp.y, -vrp.z), mat_mul(ctm, mat_rot_x(-90))));    
-    mat4 model = mat_mul(ctm, mat_rot_x(-90));
-    mat4 proj = fustrum(left, right, bottom, top, near, far);
-    // mat4 proj = idty;
-
-    // mat4 view = mat_translate(-vrp.x, -vrp.y, -vrp.z);
-    // mat4 final_ctm = mat_mul(proj, mat_mul(view, ctm));
-
-
-
     glUniformMatrix4fv(model_view_location,                 // The index of the uniform variable
 		       1,                            // The number of components to be sent (1 matrix)
 		       GL_FALSE,                     // Do not transpose
-		       (GLfloat *) &model_view);             // The data to be sent
+		       (GLfloat *) &ctm);             // The data to be sent
 
-    glUniformMatrix4fv(model_location,                 // The index of the uniform variable
-            1,                            // The number of components to be sent (1 matrix)
-            GL_FALSE,                     // Do not transpose
-            (GLfloat *) &model);             // The data to be sent
+
     
     glUniformMatrix4fv(projection_location,                 // The index of the uniform variable
 		       1,                            // The number of components to be sent (1 matrix)
 		       GL_FALSE,                     // Do not transpose
-		       (GLfloat *) &proj);             // The data to be sent
+		       (GLfloat *) &idty);             // The data to be sent
     
-
     glDrawArrays(GL_TRIANGLES,                       // Type of primitive mode to draw
 		 first_index,                        // The first index
 		 num_vertices);                      // The number of vertices to draw
@@ -257,104 +223,34 @@ void keyboard(unsigned char key, int mousex, int mousey) {
 #else
     	glutLeaveMainLoop();    // Terminate the main loop (to exit the program)
 #endif
-    }        
-    else if(key == 'w') { left = left + 0.1; }
-    else if(key == 's') { left = left - 0.1; }
-    else if(key == 'e') { right = right + 0.1; }
-    else if(key == 'd') { right = right - 0.1; }
-    else if(key == 'r') { bottom = bottom + 0.1; }
-    else if(key == 'f') { bottom = bottom - 0.1; }
-    else if(key == 't') { top = top + 0.1; }
-    else if(key == 'g') { top = top - 0.1; }
-    else if(key == 'y') { near = near + 0.1; }
-    else if(key == 'h') { near = near - 0.1; }
-    else if(key == 'u') { far = far + 50; }
-    else if(key == 'j') { far = far - 50; }
-
-    else if(key == 'z') { 
-        if(TURN_RIGHT==0 && TURN_LEFT < 4) {
-            TURN_LEFT+=1;
-
-        }
-        else if(TURN_RIGHT != 0){
-            TURN_RIGHT-=1;
-        } 
     }
-    else if(key == 'x') { 
-        if(TURN_LEFT==0 && TURN_RIGHT < 4) {
-            TURN_RIGHT+=1;
-
-        }
-        else if(TURN_LEFT != 0){
-            TURN_LEFT-=1;
-        } 
+    else if(key == '1') { // SPHERE
+	    first_index = 0;
+	    num_vertices = sphere_index;
     }
-
-    else if(key == ' ') {
-        if(FLYING_DOWN==0 && FLYING_UP < 4) {
-            FLYING_UP+=1;
-
-        }
-        else if(FLYING_DOWN != 0){
-            FLYING_DOWN-=1;
-        }
+    else if(key == '2') { // TORUS
+	    first_index = sphere_index;
+	    num_vertices = torus_index - sphere_index;
     }
-    else if(key == 'p') {
-        printf("L:%f|R:%f|B:%f|T:%f|N:%f|F:%f", left,right,bottom,top,near,far);
+    else if(key == '3') { // SPRING
+	    first_index = torus_index;
+	    num_vertices = spring_index - torus_index;
+    }
+    else if(key == '4') {
+        first_index = spring_index;
+	    num_vertices = stl_index - spring_index;
+    }
+    else if(key == 'a') {
+        float s = 1.02;
+        mat4 r = mat_rot_y(4);
+        ctm = mat_mul(ctm, r);
+    }
+    else if(key == 'w') {
+        float s = 1.02;
+        mat4 r = mat_rot_z(4);
+        ctm = mat_mul(ctm, r);
     }
     glutPostRedisplay();        // Redraw the whole scene
-}
-
-void special(int key, int x, int y) {
-    // FLYING_UP,
-    // FLYING_DOWN,
-    // WALK_FORWARD,
-    // WALK_BACKWARD,
-    // TURN_LEFT,
-    // TURN_RIGHT,
-    if(key == GLUT_KEY_LEFT) {
-        if(WALK_RIGHT==0 && WALK_LEFT < 4) {
-            WALK_LEFT+=1;
-        }
-        else if(WALK_RIGHT != 0){
-            WALK_RIGHT-=1;
-        }
-    }
-    else if(key == GLUT_KEY_RIGHT) {
-        if(WALK_LEFT==0 && WALK_RIGHT < 4) {
-            WALK_RIGHT+=1;
-        }
-        else if(WALK_LEFT != 0){
-            WALK_LEFT-=1;
-        }
-    }
-    else if(key == GLUT_KEY_UP) {
-        if(WALK_BACKWARD==0 && WALK_FORWARD < 4) {
-            WALK_FORWARD+=1;
-
-        }
-        else if(WALK_BACKWARD != 0){
-            WALK_BACKWARD-=1;
-        }
-    }
-    else if(key == GLUT_KEY_DOWN) {
-        if(WALK_FORWARD==0 && WALK_BACKWARD < 4) {
-            WALK_BACKWARD+=1;
-
-        }
-        else if(WALK_FORWARD != 0){
-            WALK_FORWARD-=1;
-        }
-    }
-    else if(key == GLUT_KEY_SHIFT_L) {
-        if(FLYING_UP==0 && FLYING_DOWN < 4) {
-            FLYING_DOWN+=1;
-        }
-        else if(FLYING_UP != 0){
-            FLYING_UP-=1;
-        }
-    }
-    // glutPostRedisplay();
 }
 
 vec4 prev = {0,0,0,0};
@@ -420,52 +316,18 @@ void mouse(int button, int state, int x, int y) {
 }
 
 void idle(void) {
-    // if(is_animating) {
-        
-        if(FLYING_UP) {
-            vrp.y = vrp.y + 0.1 * FLYING_UP;
-        }
-        if(FLYING_DOWN) {
-            vrp.y = vrp.y - 0.1 * FLYING_DOWN;
-        }
-        if(WALK_FORWARD) {
-            vrp.x = vrp.x + vpn.x * WALK_FORWARD;
-            vrp.y = vrp.y + vpn.y * WALK_FORWARD;
-            vrp.z = vrp.z + vpn.z * WALK_FORWARD;
-        }
-        if(WALK_BACKWARD) {
-            vrp.x = vrp.x - vpn.x * WALK_BACKWARD;
-            vrp.y = vrp.y - vpn.y * WALK_BACKWARD;
-            vrp.z = vrp.z - vpn.z * WALK_BACKWARD;
-        }
-        if(WALK_LEFT) {
-            vrp = mat_v4_mul(mat_rot_y(-90), vrp);
-            vrp.x = vrp.x + vpn.x * WALK_LEFT;
-            vrp.y = vrp.y + vpn.y * WALK_LEFT;
-            vrp.z = vrp.z + vpn.z * WALK_LEFT;
-            vrp = mat_v4_mul(mat_rot_y(90), vrp);
-        }
-        if(WALK_RIGHT) {
-            vrp = mat_v4_mul(mat_rot_y(90), vrp);
-            vrp.x = vrp.x + vpn.x * WALK_RIGHT;
-            vrp.y = vrp.y + vpn.y * WALK_RIGHT;
-            vrp.z = vrp.z + vpn.z * WALK_RIGHT;
-            vrp = mat_v4_mul(mat_rot_y(-90), vrp);
-        }
-        if(TURN_LEFT) {
-            vpn = mat_v4_mul(mat_rot_y(1 * TURN_LEFT), vpn);
-        }
-        if(TURN_RIGHT) {
-            vpn = mat_v4_mul(mat_rot_y(-1 * TURN_RIGHT), vpn);
-        }
-        // else if(currentState == LOOK_UP) {
-        
-        // }
-        // else if(currentState == LOOK_DOWN) {
-        
-        // }
-        glutPostRedisplay();
-    // }
+    if(is_animating) {
+	degree += 1.0;
+	if(degree == 360)
+	    degree = 0;
+	GLfloat radian = degree * M_PI / 180.0;   // Convert degree to radian
+	ctm.x.x = cos(radian);
+	ctm.x.y = sin(radian);
+	ctm.y.x = -ctm.x.y;
+	ctm.y.y = ctm.x.x;
+    }
+
+    glutPostRedisplay();
 }
 
 void usage(void) {
@@ -485,14 +347,13 @@ int main(int argc, char **argv) {
 			GLUT_DEPTH);        // Allow depth
     glutInitWindowSize(512, 512);           // Width and height of the window in number of pixels
     glutInitWindowPosition(100,100);        // The position from the top-left corner
-    glutCreateWindow("Project 2");           // The name of the window
+    glutCreateWindow("Triangle");           // The name of the window
 #ifndef __APPLE__                           // If running on a non-mac OS
     glewInit();
 #endif                                      // End if
     init();                                 // Call the init function (user-defined above)
     glutDisplayFunc(display);               // The function to call when redrawing is required
     glutKeyboardFunc(keyboard);             // The function to call when a key is pressed
-    glutSpecialFunc(special);
     glutMouseFunc(mouse);
 
     glutMotionFunc(motion);
