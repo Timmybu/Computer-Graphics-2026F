@@ -46,6 +46,7 @@ mat4 proj = {
 
 mat4 model_view;
 GLuint model_view_location;
+GLuint model_location;
 GLuint projection_location;
 
 GLfloat degree = 0.0;     // The current degree
@@ -144,6 +145,11 @@ void init(void) {
     GLuint vPosition = glGetAttribLocation(program, "vPosition");
     if(vPosition == -1)
 	printf("[WARNING] Cannot allocate the attribute 'vPosition' or it is not used in a glsl.\n");
+
+    model_location = glGetUniformLocation(program, "model");
+    if(model_location == -1) 
+    printf("[WARNING] model bug\n");
+    
     glEnableVertexAttribArray(vPosition);
     glVertexAttribPointer(vPosition,                 // The index
 			  4,                         // The number of components in each data
@@ -152,16 +158,6 @@ void init(void) {
 			  0,                         // Number of byte offset between data
 			  (GLvoid *) 0);             // The offset of the first data
 
-    // GLuint vColor = glGetAttribLocation(program, "vColor");
-    // if(vColor == -1)
-	// printf("[WARNING] Cannot allocate the attribute 'vColor' or it is not used in a glsl.\n");
-    // glEnableVertexAttribArray(vColor);
-    // glVertexAttribPointer(vColor,                    // The index
-	// 		  4,                         // The number of components in each data
-	// 		  GL_FLOAT,                  // The type of each component
-	// 		  GL_FALSE,                  // Whether to normalize
-	// 		  0,                         // Number of byte offset between data
-	// 		  (GLvoid *) (sizeof(vec4) * num_vertices)); // The offset of the first data
 
     GLuint vNormal = glGetAttribLocation(program, "vNormal");
     if(vNormal == -1)
@@ -178,6 +174,7 @@ void init(void) {
 
     model_view_location = glGetUniformLocation(program, "model_view");
     projection_location = glGetUniformLocation(program, "projection");
+    model_location = glGetUniformLocation(program, "model");
 
     if(ctm_location == -1)                           // Check ctm_location
 	printf("[WARNING] Cannot allocate the uniform variable 'ctm' or it is not used in a glsl.\n");
@@ -211,6 +208,7 @@ void display(void) {
 
 
     mat4 model_view = mat_mul(rot, mat_mul(mat_translate(-vrp.x, -vrp.y, -vrp.z), mat_mul(ctm, mat_rot_x(-90))));    
+    mat4 model = mat_mul(ctm, mat_rot_x(-90));
     mat4 proj = fustrum(left, right, bottom, top, near, far);
     // mat4 proj = idty;
 
@@ -223,6 +221,11 @@ void display(void) {
 		       1,                            // The number of components to be sent (1 matrix)
 		       GL_FALSE,                     // Do not transpose
 		       (GLfloat *) &model_view);             // The data to be sent
+
+    glUniformMatrix4fv(model_location,                 // The index of the uniform variable
+            1,                            // The number of components to be sent (1 matrix)
+            GL_FALSE,                     // Do not transpose
+            (GLfloat *) &model);             // The data to be sent
     
     glUniformMatrix4fv(projection_location,                 // The index of the uniform variable
 		       1,                            // The number of components to be sent (1 matrix)
@@ -272,17 +275,29 @@ void keyboard(unsigned char key, int mousex, int mousey) {
 
 void special(int key, int x, int y) {
     if(key == GLUT_KEY_LEFT) {
-        
+        vrp = mat_v4_mul(mat_rot_y(-90), vrp);
+        vrp.x = vrp.x + vpn.x;
+        vrp.y = vrp.y + vpn.y;
+        vrp.z = vrp.z + vpn.z;
+        vrp = mat_v4_mul(mat_rot_y(90), vrp);
     }
     else if(key == GLUT_KEY_RIGHT) {
-        // right arrow
+        vrp = mat_v4_mul(mat_rot_y(90), vrp);
+        vrp.x = vrp.x + vpn.x;
+        vrp.y = vrp.y + vpn.y;
+        vrp.z = vrp.z + vpn.z;
+        vrp = mat_v4_mul(mat_rot_y(-90), vrp);
     }
     else if(key == GLUT_KEY_UP) {
-        // v + 1.0;
+        vrp.x = vrp.x + vpn.x;
+        vrp.y = vrp.y + vpn.y;
+        vrp.z = vrp.z + vpn.z;
         
     }
     else if(key == GLUT_KEY_DOWN) {
-        // down arrow
+        vrp.x = vrp.x - vpn.x;
+        vrp.y = vrp.y - vpn.y;
+        vrp.z = vrp.z - vpn.z;
     }
     else if(key == GLUT_KEY_SHIFT_L) {
         vrp.y = vrp.y - 0.1;
