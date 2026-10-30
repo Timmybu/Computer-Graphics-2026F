@@ -22,12 +22,12 @@
 int num_vertices;    // The number of vertices
 int first_index;     // The first index to draw
 int stl_index;
-float l = -1; 
-float r = 1;
-float b = -1;
-float t = 1;
-float n = -1;
-float f = -1000;
+float left = -1; 
+float right = 1;
+float bottom = -1;
+float top = 1;
+float near = -1;
+float far = -1000;
 char* stl_file = NULL;
 
 GLuint ctm_location; // The index of the uniform variable named ctm
@@ -194,9 +194,24 @@ void display(void) {
     glClear(GL_COLOR_BUFFER_BIT |                    // Clear the color buffer
 	    GL_DEPTH_BUFFER_BIT);                    // Clear the depth buffer
 
-    // mat4 model_view = ctm;
-    mat4 model_view = mat_mul(mat_translate(-vrp.x, -vrp.y, -vrp.z), mat_mul(ctm, mat_rot_x(-90)));    
-    mat4 proj = fustrum(l, r, b, t, n, f);
+
+    // n - opposite of viewing direction, normalized
+    vec4 n = v4_norm((vec4){-vpn.x, -vpn.y, -vpn.z, -vpn.w});
+    // u - cross product of VUP and n
+    vec4 u = v4_cross(vup, n);
+    // v - n x u
+    vec4 v = v4_cross(n, u);
+
+    mat4 rot = {
+        {u.x, v.x, n.x, 0.0},
+        {u.y, v.y, n.y, 0.0},
+        {u.z, v.z, n.z, 0.0},
+        {0.0, 0.0, 0.0, 1.0}
+    };
+
+
+    mat4 model_view = mat_mul(rot, mat_mul(mat_translate(-vrp.x, -vrp.y, -vrp.z), mat_mul(ctm, mat_rot_x(-90))));    
+    mat4 proj = fustrum(left, right, bottom, top, near, far);
     // mat4 proj = idty;
 
     // mat4 view = mat_translate(-vrp.x, -vrp.y, -vrp.z);
@@ -230,58 +245,47 @@ void keyboard(unsigned char key, int mousex, int mousey) {
     	glutLeaveMainLoop();    // Terminate the main loop (to exit the program)
 #endif
     }        
-    else if(key == 'w') { l = l + 0.1; }
-    else if(key == 's') {
-        l = l - 0.1;
-    }
-    else if(key == 'e') {
-        r = r + 0.1;
-    }
-    else if(key == 'd') {
-        r = r - 0.1;
-    }
-    else if(key == 'r') {
-        b = b + 0.1;
-    }
-    else if(key == 'f') {
-        b = b - 0.1;
-    }
-    else if(key == 't') {
-        t = t + 0.1;
-    }
-    else if(key == 'g') {
-        t = t - 0.1;
-    }
-    else if(key == 'y') {
-        n = n + 0.1;
-    }
-    else if(key == 'h') {
-        n = n - 0.1;
-    }
-    else if(key == 'u') {
-        f = f + 50;
-    }
-    else if(key == 'j') {
-        f = f - 50;
+    else if(key == 'w') { left = left + 0.1; }
+    else if(key == 's') { left = left - 0.1; }
+    else if(key == 'e') { right = right + 0.1; }
+    else if(key == 'd') { right = right - 0.1; }
+    else if(key == 'r') { bottom = bottom + 0.1; }
+    else if(key == 'f') { bottom = bottom - 0.1; }
+    else if(key == 't') { top = top + 0.1; }
+    else if(key == 'g') { top = top - 0.1; }
+    else if(key == 'y') { near = near + 0.1; }
+    else if(key == 'h') { near = near - 0.1; }
+    else if(key == 'u') { far = far + 50; }
+    else if(key == 'j') { far = far - 50; }
+
+    else if(key == 'z') { vpn = mat_v4_mul(mat_rot_y(2), vpn); }
+    else if(key == 'x') { vpn = mat_v4_mul(mat_rot_y(-2), vpn); }
+
+    else if(key == ' ') {
+        vrp.y = vrp.y + 0.1;
     }
     else if(key == 'p') {
-        printf("L:%f|R:%f|B:%f|T:%f|N:%f|F:%f", l,r,b,t,n,f);
+        printf("L:%f|R:%f|B:%f|T:%f|N:%f|F:%f", left,right,bottom,top,near,far);
     }
     glutPostRedisplay();        // Redraw the whole scene
 }
 
 void special(int key, int x, int y) {
     if(key == GLUT_KEY_LEFT) {
-        // left arrow
+        
     }
     else if(key == GLUT_KEY_RIGHT) {
         // right arrow
     }
     else if(key == GLUT_KEY_UP) {
-        vrp.x = vrp.x + 1.0;
+        // v + 1.0;
+        
     }
     else if(key == GLUT_KEY_DOWN) {
         // down arrow
+    }
+    else if(key == GLUT_KEY_SHIFT_L) {
+        vrp.y = vrp.y - 0.1;
     }
     glutPostRedisplay();
 }
@@ -350,14 +354,14 @@ void mouse(int button, int state, int x, int y) {
 
 void idle(void) {
     if(is_animating) {
-	degree += 1.0;
-	if(degree == 360)
-	    degree = 0;
-	GLfloat radian = degree * M_PI / 180.0;   // Convert degree to radian
-	ctm.x.x = cos(radian);
-	ctm.x.y = sin(radian);
-	ctm.y.x = -ctm.x.y;
-	ctm.y.y = ctm.x.x;
+        degree += 1.0;
+        if(degree == 360)
+            degree = 0;
+        GLfloat radian = degree * M_PI / 180.0;   // Convert degree to radian
+        ctm.x.x = cos(radian);
+        ctm.x.y = sin(radian);
+        ctm.y.x = -ctm.x.y;
+        ctm.y.y = ctm.x.x;
     }
 
     glutPostRedisplay();

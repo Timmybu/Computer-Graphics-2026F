@@ -11,7 +11,7 @@ uniform mat4 projection;
 
 // uniform mat4 ctm;
 
-vec4 light_position = vec4(-220, 100, 300, 1);
+vec4 light_position = vec4(-220, 200, 300, 1);
 
 void main()
 {
